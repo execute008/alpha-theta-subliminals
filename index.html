@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subliminal Audio Mixer - Alpha & Theta Waves</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧠 Subliminal Audio Mixer</h1>
+            <p>Create custom subliminal audio with alpha or theta binaural beats</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Input Method Selection -->
+            <section class="card">
+                <h2>1. Choose Input Method</h2>
+                <div class="input-method-buttons">
+                    <button id="ttsBtn" class="method-btn active">
+                        <span class="icon">🔊</span>
+                        <span>Text-to-Speech</span>
+                    </button>
+                    <button id="recordBtn" class="method-btn">
+                        <span class="icon">🎤</span>
+                        <span>Record Voice</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- TTS Input -->
+            <section class="card" id="ttsSection">
+                <h2>2. Enter Your Affirmations</h2>
+                <textarea id="affirmationText" placeholder="Enter your affirmations, one per line:&#10;&#10;I am confident&#10;I am successful&#10;I am worthy of love&#10;I achieve my goals easily" rows="10"></textarea>
+                <div class="voice-settings">
+                    <label>
+                        Voice Speed:
+                        <input type="range" id="speechRate" min="0.5" max="2" step="0.1" value="1">
+                        <span id="rateValue">1.0</span>
+                    </label>
+                    <label>
+                        Voice Pitch:
+                        <input type="range" id="speechPitch" min="0" max="2" step="0.1" value="1">
+                        <span id="pitchValue">1.0</span>
+                    </label>
+                </div>
+                <button id="generateTTS" class="btn-primary">Generate TTS Audio</button>
+            </section>
+
+            <!-- Recording Input -->
+            <section class="card hidden" id="recordSection">
+                <h2>2. Record Your Voice</h2>
+                <div class="recording-controls">
+                    <button id="startRecord" class="btn-record">
+                        <span class="icon">⏺</span> Start Recording
+                    </button>
+                    <button id="stopRecord" class="btn-stop hidden">
+                        <span class="icon">⏹</span> Stop Recording
+                    </button>
+                    <div id="recordingTime" class="hidden">
+                        Recording: <span id="recordTimer">00:00</span>
+                    </div>
+                </div>
+                <div id="recordingStatus"></div>
+                <audio id="recordedAudio" controls class="hidden"></audio>
+            </section>
+
+            <!-- Wave Type Selection -->
+            <section class="card">
+                <h2>3. Select Brainwave Type</h2>
+                <div class="wave-buttons">
+                    <button id="thetaBtn" class="wave-btn active">
+                        <span class="icon">🌙</span>
+                        <div>
+                            <strong>Theta Waves</strong>
+                            <small>4-8 Hz - Deep relaxation, meditation, creativity</small>
+                        </div>
+                    </button>
+                    <button id="alphaBtn" class="wave-btn">
+                        <span class="icon">☀️</span>
+                        <div>
+                            <strong>Alpha Waves</strong>
+                            <small>8-13 Hz - Relaxed focus, stress reduction, learning</small>
+                        </div>
+                    </button>
+                </div>
+                <div class="frequency-control">
+                    <label>
+                        Precise Frequency: <span id="freqValue">6 Hz</span>
+                        <input type="range" id="frequency" min="4" max="13" step="0.5" value="6">
+                    </label>
+                </div>
+            </section>
+
+            <!-- Duration and Settings -->
+            <section class="card">
+                <h2>4. Audio Settings</h2>
+                <div class="settings-grid">
+                    <label>
+                        Duration:
+                        <select id="duration">
+                            <option value="15">15 minutes</option>
+                            <option value="30">30 minutes</option>
+                            <option value="45">45 minutes</option>
+                            <option value="60" selected>1 hour</option>
+                            <option value="90">1.5 hours</option>
+                            <option value="120">2 hours</option>
+                            <option value="180">3 hours</option>
+                            <option value="300">5 hours</option>
+                            <option value="480">8 hours</option>
+                            <option value="600">10 hours</option>
+                        </select>
+                    </label>
+                    <label>
+                        Subliminal Volume:
+                        <input type="range" id="subliminalVolume" min="0.01" max="0.15" step="0.01" value="0.05">
+                        <span id="subliminalVolumeValue">5%</span>
+                    </label>
+                    <label>
+                        Binaural Beat Volume:
+                        <input type="range" id="beatVolume" min="0.1" max="1" step="0.05" value="0.5">
+                        <span id="beatVolumeValue">50%</span>
+                    </label>
+                    <label>
+                        Repetitions per Hour:
+                        <input type="number" id="repetitions" min="10" max="500" value="100">
+                    </label>
+                </div>
+            </section>
+
+            <!-- Generate Button -->
+            <section class="card action-section">
+                <button id="generateBtn" class="btn-generate" disabled>
+                    <span class="icon">✨</span> Generate Subliminal Audio
+                </button>
+                <div id="progress" class="hidden">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                    <p id="progressText">Preparing...</p>
+                </div>
+                <div id="result" class="hidden">
+                    <h3>✅ Your Audio is Ready!</h3>
+                    <audio id="outputAudio" controls></audio>
+                    <button id="downloadBtn" class="btn-download">
+                        <span class="icon">⬇️</span> Download Audio
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <footer>
+            <p>⚠️ Use headphones for best binaural beat effect</p>
+            <p>Created with subliminal audio mixing technology</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

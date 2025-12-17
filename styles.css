@@ -1,0 +1,377 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --secondary: #8b5cf6;
+    --success: #10b981;
+    --background: #0f172a;
+    --card-bg: #1e293b;
+    --text: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border: #334155;
+    --theta: #8b5cf6;
+    --alpha: #f59e0b;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 30px 20px;
+    background: var(--card-bg);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+}
+
+h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+header p {
+    color: var(--text-secondary);
+    font-size: 1.1em;
+}
+
+.card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+h2 {
+    margin-bottom: 20px;
+    color: var(--text);
+    font-size: 1.5em;
+}
+
+/* Input Method Buttons */
+.input-method-buttons,
+.wave-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.method-btn,
+.wave-btn {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: var(--background);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: var(--text);
+    font-size: 1em;
+}
+
+.method-btn:hover,
+.wave-btn:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.method-btn.active,
+.wave-btn.active {
+    border-color: var(--primary);
+    background: var(--primary);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+}
+
+.wave-btn.active#thetaBtn {
+    border-color: var(--theta);
+    background: var(--theta);
+}
+
+.wave-btn.active#alphaBtn {
+    border-color: var(--alpha);
+    background: var(--alpha);
+}
+
+.icon {
+    font-size: 2em;
+}
+
+.wave-btn div {
+    text-align: left;
+}
+
+.wave-btn strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.wave-btn small {
+    color: var(--text-secondary);
+    font-size: 0.85em;
+}
+
+.wave-btn.active small {
+    color: var(--text);
+}
+
+/* Form Elements */
+textarea {
+    width: 100%;
+    padding: 15px;
+    background: var(--background);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 1em;
+    font-family: inherit;
+    resize: vertical;
+    margin-bottom: 15px;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.voice-settings,
+.frequency-control {
+    margin: 20px 0;
+}
+
+label {
+    display: block;
+    margin-bottom: 15px;
+    color: var(--text-secondary);
+}
+
+input[type="range"] {
+    width: 100%;
+    margin: 10px 0;
+    cursor: pointer;
+}
+
+input[type="number"],
+select {
+    padding: 10px;
+    background: var(--background);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 1em;
+    width: 100%;
+}
+
+input[type="number"]:focus,
+select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    .settings-grid,
+    .input-method-buttons,
+    .wave-buttons {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Buttons */
+.btn-primary,
+.btn-record,
+.btn-stop,
+.btn-generate,
+.btn-download {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+    width: 100%;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.btn-record {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-record:hover {
+    background: #dc2626;
+}
+
+.btn-stop {
+    background: #64748b;
+    color: white;
+}
+
+.btn-generate {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    width: 100%;
+    font-size: 1.3em;
+    padding: 20px;
+}
+
+.btn-generate:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+}
+
+.btn-generate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-download {
+    background: var(--success);
+    color: white;
+    margin-top: 15px;
+}
+
+.btn-download:hover {
+    background: #059669;
+}
+
+/* Recording Controls */
+.recording-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#recordingTime {
+    color: #ef4444;
+    font-weight: 600;
+    font-size: 1.2em;
+}
+
+#recordingStatus {
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+audio {
+    width: 100%;
+    margin-top: 15px;
+    border-radius: 8px;
+}
+
+/* Progress Bar */
+.progress-bar {
+    width: 100%;
+    height: 30px;
+    background: var(--background);
+    border-radius: 15px;
+    overflow: hidden;
+    margin: 20px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    width: 0%;
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+}
+
+#progressText {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-top: 10px;
+}
+
+/* Result Section */
+#result {
+    text-align: center;
+    padding: 20px;
+    background: var(--background);
+    border-radius: 12px;
+    border: 2px solid var(--success);
+}
+
+#result h3 {
+    color: var(--success);
+    margin-bottom: 20px;
+}
+
+/* Utilities */
+.hidden {
+    display: none !important;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    margin-top: 40px;
+    padding: 20px;
+    color: var(--text-secondary);
+}
+
+footer p {
+    margin: 5px 0;
+}
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.recording-controls button.active {
+    animation: pulse 1.5s infinite;
+}
