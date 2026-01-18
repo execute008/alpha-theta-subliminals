@@ -3,159 +3,303 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Subliminal Audio Mixer - Alpha & Theta Waves</title>
+    <title>Subliminal Audio Editor - Alpha & Theta Waves</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🧠 Subliminal Audio Mixer</h1>
-            <p>Create custom subliminal audio with alpha or theta binaural beats</p>
+    <div class="app">
+        <!-- Header/Toolbar -->
+        <header class="toolbar">
+            <div class="toolbar-left">
+                <h1 class="logo">Subliminal Editor</h1>
+            </div>
+            <div class="toolbar-center">
+                <div class="transport-controls">
+                    <button id="rewindBtn" class="transport-btn" title="Rewind (Home)">
+                        <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                    </button>
+                    <button id="playBtn" class="transport-btn play-btn" title="Play/Pause (Space)">
+                        <svg class="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <svg class="pause-icon hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    </button>
+                    <button id="stopBtn" class="transport-btn" title="Stop">
+                        <svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
+                    </button>
+                    <button id="loopBtn" class="transport-btn" title="Loop (L)">
+                        <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                    </button>
+                </div>
+                <div class="time-display">
+                    <span id="currentTime">00:00.000</span>
+                    <span class="time-separator">/</span>
+                    <span id="totalTime">00:00.000</span>
+                </div>
+            </div>
+            <div class="toolbar-right">
+                <button id="zoomInBtn" class="tool-btn" title="Zoom In (+)">
+                    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                </button>
+                <button id="zoomOutBtn" class="tool-btn" title="Zoom Out (-)">
+                    <svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
+                </button>
+                <button id="zoomFitBtn" class="tool-btn" title="Fit to Window (F)">
+                    <svg viewBox="0 0 24 24"><path d="M3 5v4h2V5h4V3H5c-1.1 0-2 .9-2 2zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/></svg>
+                </button>
+                <div class="toolbar-divider"></div>
+                <button id="exportBtn" class="action-btn" title="Export Audio">
+                    <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    Export
+                </button>
+            </div>
         </header>
 
+        <!-- Main Content Area -->
         <div class="main-content">
-            <!-- Input Method Selection -->
-            <section class="card">
-                <h2>1. Choose Input Method</h2>
-                <div class="input-method-buttons">
-                    <button id="ttsBtn" class="method-btn active">
-                        <span class="icon">🔊</span>
-                        <span>Text-to-Speech</span>
-                    </button>
-                    <button id="recordBtn" class="method-btn">
-                        <span class="icon">🎤</span>
-                        <span>Record Voice</span>
-                    </button>
+            <!-- Left Sidebar - Sources Panel -->
+            <aside class="sidebar sources-panel">
+                <div class="panel-header">
+                    <h2>Audio Sources</h2>
                 </div>
-            </section>
 
-            <!-- TTS Input -->
-            <section class="card" id="ttsSection">
-                <h2>2. Enter Your Affirmations</h2>
-                <textarea id="affirmationText" placeholder="Enter your affirmations, one per line:&#10;&#10;I am confident&#10;I am successful&#10;I am worthy of love&#10;I achieve my goals easily" rows="10"></textarea>
-                <div class="voice-settings">
-                    <label>
-                        Voice Speed:
-                        <input type="range" id="speechRate" min="0.5" max="2" step="0.1" value="1">
-                        <span id="rateValue">1.0</span>
-                    </label>
-                    <label>
-                        Voice Pitch:
-                        <input type="range" id="speechPitch" min="0" max="2" step="0.1" value="1">
-                        <span id="pitchValue">1.0</span>
-                    </label>
-                </div>
-                <button id="generateTTS" class="btn-primary">Generate TTS Audio</button>
-            </section>
-
-            <!-- Recording Input -->
-            <section class="card hidden" id="recordSection">
-                <h2>2. Record Your Voice</h2>
-                <div class="recording-controls">
-                    <button id="startRecord" class="btn-record">
-                        <span class="icon">⏺</span> Start Recording
-                    </button>
-                    <button id="stopRecord" class="btn-stop hidden">
-                        <span class="icon">⏹</span> Stop Recording
-                    </button>
-                    <div id="recordingTime" class="hidden">
-                        Recording: <span id="recordTimer">00:00</span>
+                <!-- Import Audio -->
+                <div class="source-section">
+                    <h3>Import Audio</h3>
+                    <div id="dropZone" class="drop-zone">
+                        <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                        <span>Drop audio files here</span>
+                        <span class="drop-hint">or click to browse</span>
+                        <input type="file" id="fileInput" accept="audio/*" multiple hidden>
                     </div>
                 </div>
-                <div id="recordingStatus"></div>
-                <audio id="recordedAudio" controls class="hidden"></audio>
-            </section>
 
-            <!-- Wave Type Selection -->
-            <section class="card">
-                <h2>3. Select Brainwave Type</h2>
-                <div class="wave-buttons">
-                    <button id="thetaBtn" class="wave-btn active">
-                        <span class="icon">🌙</span>
-                        <div>
-                            <strong>Theta Waves</strong>
-                            <small>4-8 Hz - Deep relaxation, meditation, creativity</small>
-                        </div>
-                    </button>
-                    <button id="alphaBtn" class="wave-btn">
-                        <span class="icon">☀️</span>
-                        <div>
-                            <strong>Alpha Waves</strong>
-                            <small>8-13 Hz - Relaxed focus, stress reduction, learning</small>
-                        </div>
-                    </button>
-                </div>
-                <div class="frequency-control">
-                    <label>
-                        Precise Frequency: <span id="freqValue">6 Hz</span>
-                        <input type="range" id="frequency" min="4" max="13" step="0.5" value="6">
-                    </label>
-                </div>
-            </section>
-
-            <!-- Duration and Settings -->
-            <section class="card">
-                <h2>4. Audio Settings</h2>
-                <div class="settings-grid">
-                    <label>
-                        Duration:
-                        <select id="duration">
-                            <option value="15">15 minutes</option>
-                            <option value="30">30 minutes</option>
-                            <option value="45">45 minutes</option>
-                            <option value="60" selected>1 hour</option>
-                            <option value="90">1.5 hours</option>
-                            <option value="120">2 hours</option>
-                            <option value="180">3 hours</option>
-                            <option value="300">5 hours</option>
-                            <option value="480">8 hours</option>
-                            <option value="600">10 hours</option>
-                        </select>
-                    </label>
-                    <label>
-                        Subliminal Volume:
-                        <input type="range" id="subliminalVolume" min="0.01" max="0.15" step="0.01" value="0.05">
-                        <span id="subliminalVolumeValue">5%</span>
-                    </label>
-                    <label>
-                        Binaural Beat Volume:
-                        <input type="range" id="beatVolume" min="0.1" max="1" step="0.05" value="0.5">
-                        <span id="beatVolumeValue">50%</span>
-                    </label>
-                    <label>
-                        Repetitions per Hour:
-                        <input type="number" id="repetitions" min="10" max="500" value="100">
-                    </label>
-                </div>
-            </section>
-
-            <!-- Generate Button -->
-            <section class="card action-section">
-                <button id="generateBtn" class="btn-generate" disabled>
-                    <span class="icon">✨</span> Generate Subliminal Audio
-                </button>
-                <div id="progress" class="hidden">
-                    <div class="progress-bar">
-                        <div id="progressFill" class="progress-fill"></div>
+                <!-- Text-to-Speech -->
+                <div class="source-section">
+                    <h3>Text-to-Speech</h3>
+                    <textarea id="ttsText" placeholder="Enter affirmations (one per line)..."></textarea>
+                    <div class="tts-controls">
+                        <label>
+                            <span>Voice:</span>
+                            <select id="ttsVoice"></select>
+                        </label>
+                        <label>
+                            <span>Speed:</span>
+                            <input type="range" id="ttsRate" min="0.5" max="2" step="0.1" value="1">
+                            <span id="ttsRateValue">1.0x</span>
+                        </label>
                     </div>
-                    <p id="progressText">Preparing...</p>
+                    <button id="generateTtsBtn" class="source-btn">Generate TTS Audio</button>
                 </div>
-                <div id="result" class="hidden">
-                    <h3>✅ Your Audio is Ready!</h3>
-                    <audio id="outputAudio" controls></audio>
-                    <button id="downloadBtn" class="btn-download">
-                        <span class="icon">⬇️</span> Download Audio
-                    </button>
+
+                <!-- Voice Recording -->
+                <div class="source-section">
+                    <h3>Record Voice</h3>
+                    <div class="record-controls">
+                        <button id="recordBtn" class="record-btn">
+                            <span class="record-dot"></span>
+                            <span id="recordLabel">Record</span>
+                        </button>
+                        <span id="recordTime" class="record-time hidden">00:00</span>
+                    </div>
                 </div>
-            </section>
+
+                <!-- Binaural Generator -->
+                <div class="source-section">
+                    <h3>Binaural Beat Generator</h3>
+                    <div class="binaural-controls">
+                        <div class="wave-type-select">
+                            <button id="thetaBtn" class="wave-btn active" data-type="theta">
+                                Theta (4-8 Hz)
+                            </button>
+                            <button id="alphaBtn" class="wave-btn" data-type="alpha">
+                                Alpha (8-13 Hz)
+                            </button>
+                        </div>
+                        <label>
+                            <span>Frequency: <strong id="freqValue">6.0</strong> Hz</span>
+                            <input type="range" id="binauralFreq" min="4" max="13" step="0.5" value="6">
+                        </label>
+                        <label>
+                            <span>Base Tone: <strong id="baseFreqValue">200</strong> Hz</span>
+                            <input type="range" id="baseFreq" min="100" max="400" step="10" value="200">
+                        </label>
+                        <button id="addBinauralBtn" class="source-btn">Add Binaural Track</button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center - Timeline -->
+            <main class="timeline-container">
+                <!-- Timeline Header with Time Ruler -->
+                <div class="timeline-header">
+                    <div class="track-header-spacer"></div>
+                    <div class="time-ruler-container">
+                        <canvas id="timeRuler" class="time-ruler"></canvas>
+                    </div>
+                </div>
+
+                <!-- Timeline Tracks -->
+                <div class="timeline-tracks" id="timelineTracks">
+                    <!-- Track placeholder when empty -->
+                    <div class="empty-timeline" id="emptyTimeline">
+                        <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                        <p>No tracks yet</p>
+                        <span>Import audio, generate TTS, record your voice, or add binaural beats to get started</span>
+                    </div>
+                </div>
+
+                <!-- Timeline Scrollbar -->
+                <div class="timeline-scrollbar">
+                    <div class="track-header-spacer"></div>
+                    <div class="scrollbar-track">
+                        <div id="scrollbarThumb" class="scrollbar-thumb"></div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Right Sidebar - Track Properties -->
+            <aside class="sidebar properties-panel" id="propertiesPanel">
+                <div class="panel-header">
+                    <h2>Track Properties</h2>
+                </div>
+
+                <div class="no-selection" id="noTrackSelected">
+                    <p>Select a track to edit its properties</p>
+                </div>
+
+                <div class="track-properties hidden" id="trackProperties">
+                    <div class="property-group">
+                        <label>
+                            <span>Track Name:</span>
+                            <input type="text" id="trackName" class="property-input">
+                        </label>
+                    </div>
+
+                    <div class="property-group">
+                        <label>
+                            <span>Volume:</span>
+                            <input type="range" id="trackVolume" min="0" max="1" step="0.01" value="1">
+                            <span id="trackVolumeValue">100%</span>
+                        </label>
+                    </div>
+
+                    <div class="property-group">
+                        <label>
+                            <span>Pan:</span>
+                            <input type="range" id="trackPan" min="-1" max="1" step="0.1" value="0">
+                            <span id="trackPanValue">C</span>
+                        </label>
+                    </div>
+
+                    <div class="property-group subliminal-options" id="subliminalOptions">
+                        <h4>Subliminal Settings</h4>
+                        <label>
+                            <span>Repetitions/Hour:</span>
+                            <input type="number" id="repetitionsPerHour" min="1" max="500" value="60" class="property-input">
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="randomizePosition" checked>
+                            <span>Randomize position</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="randomizeVolume" checked>
+                            <span>Vary volume (±20%)</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="randomizePitch" checked>
+                            <span>Vary pitch (±5%)</span>
+                        </label>
+                    </div>
+
+                    <div class="property-group effects-section">
+                        <h4>Effects</h4>
+                        <label>
+                            <span>Fade In:</span>
+                            <input type="range" id="fadeIn" min="0" max="10" step="0.1" value="0">
+                            <span id="fadeInValue">0.0s</span>
+                        </label>
+                        <label>
+                            <span>Fade Out:</span>
+                            <input type="range" id="fadeOut" min="0" max="10" step="0.1" value="0">
+                            <span id="fadeOutValue">0.0s</span>
+                        </label>
+                    </div>
+
+                    <div class="property-actions">
+                        <button id="duplicateTrackBtn" class="property-btn">Duplicate</button>
+                        <button id="deleteTrackBtn" class="property-btn danger">Delete</button>
+                    </div>
+                </div>
+            </aside>
         </div>
 
-        <footer>
-            <p>⚠️ Use headphones for best binaural beat effect</p>
-            <p>Created with subliminal audio mixing technology</p>
+        <!-- Bottom Bar - Master Output -->
+        <footer class="master-bar">
+            <div class="master-section">
+                <span class="master-label">Master</span>
+                <div class="master-meter">
+                    <div class="meter-bar">
+                        <div id="meterLeft" class="meter-fill"></div>
+                    </div>
+                    <div class="meter-bar">
+                        <div id="meterRight" class="meter-fill"></div>
+                    </div>
+                </div>
+                <input type="range" id="masterVolume" min="0" max="1" step="0.01" value="0.8" class="master-slider">
+                <span id="masterVolumeValue" class="master-value">80%</span>
+            </div>
+            <div class="output-settings">
+                <label>
+                    Duration:
+                    <select id="outputDuration">
+                        <option value="60">1 minute</option>
+                        <option value="300">5 minutes</option>
+                        <option value="600">10 minutes</option>
+                        <option value="900">15 minutes</option>
+                        <option value="1800">30 minutes</option>
+                        <option value="3600" selected>1 hour</option>
+                        <option value="7200">2 hours</option>
+                        <option value="14400">4 hours</option>
+                        <option value="28800">8 hours</option>
+                    </select>
+                </label>
+                <label>
+                    Format:
+                    <select id="outputFormat">
+                        <option value="wav">WAV (Lossless)</option>
+                        <option value="mp3">MP3 (Compressed)</option>
+                    </select>
+                </label>
+            </div>
         </footer>
     </div>
 
+    <!-- Export Modal -->
+    <div id="exportModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Export Audio</h2>
+                <button id="closeExportModal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="export-progress" id="exportProgress">
+                    <div class="progress-bar">
+                        <div id="exportProgressFill" class="progress-fill"></div>
+                    </div>
+                    <p id="exportStatus">Preparing export...</p>
+                </div>
+                <div class="export-complete hidden" id="exportComplete">
+                    <svg viewBox="0 0 24 24" class="success-icon"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    <p>Export complete!</p>
+                    <button id="downloadExportBtn" class="download-btn">Download Audio</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="audio-engine.js"></script>
+    <script src="waveform.js"></script>
+    <script src="timeline.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

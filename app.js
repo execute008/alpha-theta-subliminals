@@ -1,255 +1,297 @@
-// Subliminal Audio Mixer Application
-class SubliminalAudioMixer {
+/**
+ * Subliminal Audio Editor - Main Application
+ */
+
+class SubliminalAudioEditor {
     constructor() {
-        this.audioContext = null;
-        this.inputAudioBuffer = null;
-        this.recordedChunks = [];
-        this.mediaRecorder = null;
+        this.timeline = new Timeline();
+        this.isRecording = false;
+        this.recordingController = null;
         this.recordingStartTime = null;
         this.recordingInterval = null;
-        this.selectedWave = 'theta'; // default
-        this.selectedInputMethod = 'tts'; // default
 
-        this.initializeUI();
-        this.initializeEventListeners();
+        this.selectedWaveType = 'theta';
+        this.binauralFrequency = 6;
+        this.baseFrequency = 200;
+
+        this.exportBlob = null;
     }
 
-    initializeUI() {
-        // Update range value displays
-        const updateRangeDisplay = (rangeId, displayId, suffix = '') => {
-            const range = document.getElementById(rangeId);
-            const display = document.getElementById(displayId);
-            range.addEventListener('input', () => {
-                display.textContent = range.value + suffix;
+    /**
+     * Initialize the application
+     */
+    async init() {
+        // Initialize timeline
+        this.timeline.init();
+
+        // Set up callbacks
+        this.timeline.onTrackSelect = (track) => this.onTrackSelected(track);
+        this.timeline.onTracksChange = (tracks) => this.onTracksChanged(tracks);
+
+        audioEngine.onTimeUpdate = (time) => this.onTimeUpdate(time);
+        audioEngine.onPlayStateChange = (playing) => this.onPlayStateChanged(playing);
+        audioEngine.onMeterUpdate = (left, right) => this.onMeterUpdate(left, right);
+
+        // Initialize UI
+        this.initTransportControls();
+        this.initZoomControls();
+        this.initSourcesPanel();
+        this.initPropertiesPanel();
+        this.initMasterBar();
+        this.initExportModal();
+        this.initKeyboardShortcuts();
+        this.initTTSVoices();
+
+        // Initialize audio engine
+        await audioEngine.init();
+    }
+
+    /**
+     * Initialize transport controls
+     */
+    initTransportControls() {
+        const playBtn = document.getElementById('playBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const rewindBtn = document.getElementById('rewindBtn');
+        const loopBtn = document.getElementById('loopBtn');
+
+        playBtn.addEventListener('click', () => this.togglePlayback());
+        stopBtn.addEventListener('click', () => this.stop());
+        rewindBtn.addEventListener('click', () => this.rewind());
+        loopBtn.addEventListener('click', () => this.toggleLoop());
+    }
+
+    /**
+     * Initialize zoom controls
+     */
+    initZoomControls() {
+        document.getElementById('zoomInBtn').addEventListener('click', () => this.timeline.zoomIn());
+        document.getElementById('zoomOutBtn').addEventListener('click', () => this.timeline.zoomOut());
+        document.getElementById('zoomFitBtn').addEventListener('click', () => this.timeline.zoomFit());
+    }
+
+    /**
+     * Initialize sources panel
+     */
+    initSourcesPanel() {
+        // File import
+        this.initFileImport();
+
+        // TTS
+        this.initTTS();
+
+        // Recording
+        this.initRecording();
+
+        // Binaural generator
+        this.initBinauralGenerator();
+    }
+
+    /**
+     * Initialize file import (drag & drop + file picker)
+     */
+    initFileImport() {
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        // Click to browse
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            files.forEach(file => this.importAudioFile(file));
+            fileInput.value = '';
+        });
+
+        // Drag and drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('audio/'));
+            files.forEach(file => this.importAudioFile(file));
+        });
+    }
+
+    /**
+     * Import an audio file
+     */
+    async importAudioFile(file) {
+        try {
+            const buffer = await audioEngine.decodeAudioFile(file);
+
+            const track = new Track({
+                name: file.name.replace(/\.[^/.]+$/, ''),
+                type: 'audio',
+                buffer: buffer
+            });
+
+            this.timeline.addTrack(track);
+        } catch (error) {
+            console.error('Failed to import audio file:', error);
+            alert('Failed to import audio file. Make sure it\'s a valid audio format.');
+        }
+    }
+
+    /**
+     * Initialize TTS voices
+     */
+    initTTSVoices() {
+        const voiceSelect = document.getElementById('ttsVoice');
+
+        const populateVoices = () => {
+            const voices = speechSynthesis.getVoices();
+            voiceSelect.innerHTML = '';
+
+            voices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                if (voice.default) option.selected = true;
+                voiceSelect.appendChild(option);
             });
         };
 
-        updateRangeDisplay('speechRate', 'rateValue');
-        updateRangeDisplay('speechPitch', 'pitchValue');
-        updateRangeDisplay('frequency', 'freqValue', ' Hz');
-        updateRangeDisplay('subliminalVolume', 'subliminalVolumeValue', '%');
-        updateRangeDisplay('beatVolume', 'beatVolumeValue', '%');
-
-        // Update subliminal volume display to percentage
-        document.getElementById('subliminalVolume').addEventListener('input', (e) => {
-            document.getElementById('subliminalVolumeValue').textContent =
-                Math.round(e.target.value * 100) + '%';
-        });
-
-        document.getElementById('beatVolume').addEventListener('input', (e) => {
-            document.getElementById('beatVolumeValue').textContent =
-                Math.round(e.target.value * 100) + '%';
-        });
+        // Populate voices when available
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoices;
+        }
+        populateVoices();
     }
 
-    initializeEventListeners() {
-        // Input method selection
-        document.getElementById('ttsBtn').addEventListener('click', () => {
-            this.selectInputMethod('tts');
+    /**
+     * Initialize TTS controls
+     */
+    initTTS() {
+        const generateBtn = document.getElementById('generateTtsBtn');
+        const ttsText = document.getElementById('ttsText');
+        const rateSlider = document.getElementById('ttsRate');
+        const rateValue = document.getElementById('ttsRateValue');
+
+        rateSlider.addEventListener('input', () => {
+            rateValue.textContent = `${rateSlider.value}x`;
         });
 
-        document.getElementById('recordBtn').addEventListener('click', () => {
-            this.selectInputMethod('record');
-        });
+        generateBtn.addEventListener('click', async () => {
+            const text = ttsText.value.trim();
+            if (!text) {
+                alert('Please enter some text for TTS.');
+                return;
+            }
 
-        // Wave type selection
-        document.getElementById('thetaBtn').addEventListener('click', () => {
-            this.selectWaveType('theta');
-            document.getElementById('frequency').value = 6;
-            document.getElementById('freqValue').textContent = '6 Hz';
-        });
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Generating...';
 
-        document.getElementById('alphaBtn').addEventListener('click', () => {
-            this.selectWaveType('alpha');
-            document.getElementById('frequency').value = 10;
-            document.getElementById('freqValue').textContent = '10 Hz';
-        });
+            try {
+                const rate = parseFloat(rateSlider.value);
+                const buffer = await audioEngine.generateTTSAudio(text, null, rate);
 
-        // TTS generation
-        document.getElementById('generateTTS').addEventListener('click', () => {
-            this.generateTTSAudio();
-        });
+                const track = new Track({
+                    name: 'TTS Affirmations',
+                    type: 'subliminal',
+                    buffer: buffer,
+                    volume: 0.05, // Low volume for subliminal
+                    repetitionsPerHour: 60
+                });
 
-        // Recording controls
-        document.getElementById('startRecord').addEventListener('click', () => {
-            this.startRecording();
-        });
-
-        document.getElementById('stopRecord').addEventListener('click', () => {
-            this.stopRecording();
-        });
-
-        // Main generation button
-        document.getElementById('generateBtn').addEventListener('click', () => {
-            this.generateSubliminalAudio();
-        });
-
-        // Download button
-        document.getElementById('downloadBtn').addEventListener('click', () => {
-            this.downloadAudio();
-        });
-
-        // Enable generate button when text is entered
-        document.getElementById('affirmationText').addEventListener('input', (e) => {
-            if (this.selectedInputMethod === 'tts' && e.target.value.trim()) {
-                document.getElementById('generateBtn').disabled = false;
+                this.timeline.addTrack(track);
+            } catch (error) {
+                console.error('TTS generation failed:', error);
+                alert('TTS generation failed. Please try again.');
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate TTS Audio';
             }
         });
     }
 
-    selectInputMethod(method) {
-        this.selectedInputMethod = method;
+    /**
+     * Initialize recording controls
+     */
+    initRecording() {
+        const recordBtn = document.getElementById('recordBtn');
+        const recordLabel = document.getElementById('recordLabel');
+        const recordTime = document.getElementById('recordTime');
 
-        // Update button states
-        document.getElementById('ttsBtn').classList.toggle('active', method === 'tts');
-        document.getElementById('recordBtn').classList.toggle('active', method === 'record');
-
-        // Show/hide sections
-        document.getElementById('ttsSection').classList.toggle('hidden', method !== 'tts');
-        document.getElementById('recordSection').classList.toggle('hidden', method !== 'record');
-
-        // Enable generate button if input is ready
-        const hasInput = (method === 'tts' && document.getElementById('affirmationText').value.trim()) ||
-                        (method === 'record' && this.inputAudioBuffer);
-        document.getElementById('generateBtn').disabled = !hasInput;
-    }
-
-    selectWaveType(wave) {
-        this.selectedWave = wave;
-
-        document.getElementById('thetaBtn').classList.toggle('active', wave === 'theta');
-        document.getElementById('alphaBtn').classList.toggle('active', wave === 'alpha');
-
-        // Update frequency range
-        const freqInput = document.getElementById('frequency');
-        if (wave === 'theta') {
-            freqInput.min = 4;
-            freqInput.max = 8;
-        } else {
-            freqInput.min = 8;
-            freqInput.max = 13;
-        }
-    }
-
-    async generateTTSAudio() {
-        const text = document.getElementById('affirmationText').value.trim();
-        if (!text) {
-            alert('Please enter some affirmations first.');
-            return;
-        }
-
-        const rate = parseFloat(document.getElementById('speechRate').value);
-        const pitch = parseFloat(document.getElementById('speechPitch').value);
-
-        // Split text into lines (affirmations)
-        const affirmations = text.split('\n').filter(line => line.trim());
-
-        if (affirmations.length === 0) {
-            alert('Please enter at least one affirmation.');
-            return;
-        }
-
-        // Initialize audio context
-        if (!this.audioContext) {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
-
-        // Use Web Speech API to generate audio
-        const utterances = affirmations.map(affirmation => {
-            const utterance = new SpeechSynthesisUtterance(affirmation);
-            utterance.rate = rate;
-            utterance.pitch = pitch;
-            return utterance;
-        });
-
-        // Speak all affirmations to record them
-        const audioChunks = [];
-
-        try {
-            // Create a combined audio buffer from TTS
-            await this.generateTTSBuffer(affirmations, rate, pitch);
-            document.getElementById('generateBtn').disabled = false;
-            alert('TTS audio generated! You can now generate your subliminal audio.');
-        } catch (error) {
-            console.error('TTS generation failed:', error);
-            alert('TTS generation failed. Your browser might not support this feature. Please try recording your voice instead.');
-        }
-    }
-
-    async generateTTSBuffer(affirmations, rate, pitch) {
-        // Note: Web Speech API doesn't provide direct audio buffer access
-        // We'll create a simple sine wave as placeholder and notify user to record
-        // In a production app, you'd want to use a server-side TTS service
-
-        const sampleRate = 44100;
-        const duration = affirmations.length * 2; // 2 seconds per affirmation
-        const buffer = this.audioContext.createBuffer(1, sampleRate * duration, sampleRate);
-        const data = buffer.getChannelData(0);
-
-        // Generate simple tone for each affirmation (placeholder)
-        let offset = 0;
-        affirmations.forEach((affirmation, index) => {
-            const affirmDuration = 1.5; // seconds
-            const silenceDuration = 0.5;
-            const freq = 200 + (index % 5) * 50;
-
-            for (let i = 0; i < sampleRate * affirmDuration; i++) {
-                data[offset + i] = Math.sin(2 * Math.PI * freq * i / sampleRate) * 0.3;
+        recordBtn.addEventListener('click', async () => {
+            if (this.isRecording) {
+                this.stopRecording();
+            } else {
+                await this.startRecording();
             }
-            offset += sampleRate * (affirmDuration + silenceDuration);
         });
-
-        this.inputAudioBuffer = buffer;
     }
 
+    /**
+     * Start recording
+     */
     async startRecording() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            const chunks = [];
 
-            this.mediaRecorder = new MediaRecorder(stream);
-            this.recordedChunks = [];
-
-            this.mediaRecorder.ondataavailable = (e) => {
+            mediaRecorder.ondataavailable = (e) => {
                 if (e.data.size > 0) {
-                    this.recordedChunks.push(e.data);
+                    chunks.push(e.data);
                 }
             };
 
-            this.mediaRecorder.onstop = async () => {
-                const blob = new Blob(this.recordedChunks, { type: 'audio/webm' });
-                const audioUrl = URL.createObjectURL(blob);
+            mediaRecorder.onstop = async () => {
+                stream.getTracks().forEach(track => track.stop());
 
-                const audioElement = document.getElementById('recordedAudio');
-                audioElement.src = audioUrl;
-                audioElement.classList.remove('hidden');
-
-                // Convert to audio buffer
+                const blob = new Blob(chunks, { type: 'audio/webm' });
                 const arrayBuffer = await blob.arrayBuffer();
-                if (!this.audioContext) {
-                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                this.inputAudioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
 
-                document.getElementById('generateBtn').disabled = false;
-                document.getElementById('recordingStatus').innerHTML =
-                    '<span style="color: #10b981;">✓ Recording saved! You can now generate your subliminal audio.</span>';
+                try {
+                    const audioBuffer = await audioEngine.audioContext.decodeAudioData(arrayBuffer);
+
+                    const track = new Track({
+                        name: 'Voice Recording',
+                        type: 'subliminal',
+                        buffer: audioBuffer,
+                        volume: 0.05,
+                        repetitionsPerHour: 60
+                    });
+
+                    this.timeline.addTrack(track);
+                } catch (error) {
+                    console.error('Failed to decode recording:', error);
+                    alert('Failed to process recording.');
+                }
             };
 
-            this.mediaRecorder.start();
+            this.recordingController = { mediaRecorder, stream };
+            mediaRecorder.start();
+
+            this.isRecording = true;
             this.recordingStartTime = Date.now();
 
             // Update UI
-            document.getElementById('startRecord').classList.add('hidden');
-            document.getElementById('stopRecord').classList.remove('hidden');
-            document.getElementById('recordingTime').classList.remove('hidden');
+            const recordBtn = document.getElementById('recordBtn');
+            const recordLabel = document.getElementById('recordLabel');
+            const recordTime = document.getElementById('recordTime');
+
+            recordBtn.classList.add('recording');
+            recordLabel.textContent = 'Stop';
+            recordTime.classList.remove('hidden');
 
             // Start timer
             this.recordingInterval = setInterval(() => {
                 const elapsed = Math.floor((Date.now() - this.recordingStartTime) / 1000);
                 const minutes = Math.floor(elapsed / 60);
                 const seconds = elapsed % 60;
-                document.getElementById('recordTimer').textContent =
-                    `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                recordTime.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             }, 1000);
 
         } catch (error) {
@@ -258,256 +300,489 @@ class SubliminalAudioMixer {
         }
     }
 
+    /**
+     * Stop recording
+     */
     stopRecording() {
-        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-            this.mediaRecorder.stop();
-            this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
-
-            clearInterval(this.recordingInterval);
-
-            document.getElementById('startRecord').classList.remove('hidden');
-            document.getElementById('stopRecord').classList.add('hidden');
+        if (this.recordingController) {
+            this.recordingController.mediaRecorder.stop();
+            this.recordingController = null;
         }
+
+        clearInterval(this.recordingInterval);
+
+        this.isRecording = false;
+
+        // Update UI
+        const recordBtn = document.getElementById('recordBtn');
+        const recordLabel = document.getElementById('recordLabel');
+        const recordTime = document.getElementById('recordTime');
+
+        recordBtn.classList.remove('recording');
+        recordLabel.textContent = 'Record';
+        recordTime.classList.add('hidden');
     }
 
-    async generateSubliminalAudio() {
-        if (!this.inputAudioBuffer) {
-            alert('Please generate TTS audio or record your voice first.');
+    /**
+     * Initialize binaural generator
+     */
+    initBinauralGenerator() {
+        const thetaBtn = document.getElementById('thetaBtn');
+        const alphaBtn = document.getElementById('alphaBtn');
+        const freqSlider = document.getElementById('binauralFreq');
+        const freqValue = document.getElementById('freqValue');
+        const baseFreqSlider = document.getElementById('baseFreq');
+        const baseFreqValue = document.getElementById('baseFreqValue');
+        const addBtn = document.getElementById('addBinauralBtn');
+
+        // Wave type selection
+        thetaBtn.addEventListener('click', () => {
+            this.selectedWaveType = 'theta';
+            thetaBtn.classList.add('active');
+            alphaBtn.classList.remove('active');
+            freqSlider.min = 4;
+            freqSlider.max = 8;
+            freqSlider.value = 6;
+            freqValue.textContent = '6.0';
+            this.binauralFrequency = 6;
+        });
+
+        alphaBtn.addEventListener('click', () => {
+            this.selectedWaveType = 'alpha';
+            alphaBtn.classList.add('active');
+            thetaBtn.classList.remove('active');
+            freqSlider.min = 8;
+            freqSlider.max = 13;
+            freqSlider.value = 10;
+            freqValue.textContent = '10.0';
+            this.binauralFrequency = 10;
+        });
+
+        // Frequency sliders
+        freqSlider.addEventListener('input', () => {
+            this.binauralFrequency = parseFloat(freqSlider.value);
+            freqValue.textContent = this.binauralFrequency.toFixed(1);
+        });
+
+        baseFreqSlider.addEventListener('input', () => {
+            this.baseFrequency = parseInt(baseFreqSlider.value);
+            baseFreqValue.textContent = this.baseFrequency;
+        });
+
+        // Add binaural track
+        addBtn.addEventListener('click', async () => {
+            addBtn.disabled = true;
+            addBtn.textContent = 'Generating...';
+
+            try {
+                // Generate a short binaural sample for preview
+                const duration = parseInt(document.getElementById('outputDuration').value);
+                const buffer = await audioEngine.generateBinauralBeat(
+                    this.binauralFrequency,
+                    this.baseFrequency,
+                    Math.min(duration, 60) // Generate max 1 minute for preview
+                );
+
+                const waveName = this.selectedWaveType === 'theta' ? 'Theta' : 'Alpha';
+                const track = new Track({
+                    name: `${waveName} Binaural (${this.binauralFrequency}Hz)`,
+                    type: 'binaural',
+                    buffer: buffer,
+                    volume: 0.5,
+                    binauralFrequency: this.binauralFrequency,
+                    baseFrequency: this.baseFrequency
+                });
+
+                this.timeline.addTrack(track);
+            } catch (error) {
+                console.error('Failed to generate binaural beat:', error);
+                alert('Failed to generate binaural beat.');
+            } finally {
+                addBtn.disabled = false;
+                addBtn.textContent = 'Add Binaural Track';
+            }
+        });
+    }
+
+    /**
+     * Initialize properties panel
+     */
+    initPropertiesPanel() {
+        const trackName = document.getElementById('trackName');
+        const trackVolume = document.getElementById('trackVolume');
+        const trackVolumeValue = document.getElementById('trackVolumeValue');
+        const trackPan = document.getElementById('trackPan');
+        const trackPanValue = document.getElementById('trackPanValue');
+        const repetitionsPerHour = document.getElementById('repetitionsPerHour');
+        const randomizePosition = document.getElementById('randomizePosition');
+        const randomizeVolume = document.getElementById('randomizeVolume');
+        const randomizePitch = document.getElementById('randomizePitch');
+        const fadeIn = document.getElementById('fadeIn');
+        const fadeInValue = document.getElementById('fadeInValue');
+        const fadeOut = document.getElementById('fadeOut');
+        const fadeOutValue = document.getElementById('fadeOutValue');
+        const duplicateBtn = document.getElementById('duplicateTrackBtn');
+        const deleteBtn = document.getElementById('deleteTrackBtn');
+
+        // Track name
+        trackName.addEventListener('change', () => {
+            if (this.timeline.selectedTrack) {
+                this.timeline.updateTrack(this.timeline.selectedTrack.id, { name: trackName.value });
+            }
+        });
+
+        // Volume
+        trackVolume.addEventListener('input', () => {
+            const value = parseFloat(trackVolume.value);
+            trackVolumeValue.textContent = `${Math.round(value * 100)}%`;
+            if (this.timeline.selectedTrack) {
+                this.timeline.updateTrack(this.timeline.selectedTrack.id, { volume: value });
+            }
+        });
+
+        // Pan
+        trackPan.addEventListener('input', () => {
+            const value = parseFloat(trackPan.value);
+            trackPanValue.textContent = value === 0 ? 'C' : (value < 0 ? `L${Math.abs(Math.round(value * 100))}` : `R${Math.round(value * 100)}`);
+            if (this.timeline.selectedTrack) {
+                this.timeline.updateTrack(this.timeline.selectedTrack.id, { pan: value });
+            }
+        });
+
+        // Subliminal options
+        repetitionsPerHour.addEventListener('change', () => {
+            if (this.timeline.selectedTrack) {
+                this.timeline.updateTrack(this.timeline.selectedTrack.id, {
+                    repetitionsPerHour: parseInt(repetitionsPerHour.value)
+                });
+            }
+        });
+
+        randomizePosition.addEventListener('change', () => {
+            if (this.timeline.selectedTrack) {
+                this.timeline.updateTrack(this.timeline.selectedTrack.id, {
+                    randomizePosition: randomizePosition.checked
+                });
+            }
+        });
+
+        randomizeVolume.addEventListener('change', () => {
+            if (this.timeline.selectedTrack) {
+                this.timeline.updateTrack(this.timeline.selectedTrack.id, {
+                    randomizeVolume: randomizeVolume.checked
+                });
+            }
+        });
+
+        randomizePitch.addEventListener('change', () => {
+            if (this.timeline.selectedTrack) {
+                this.timeline.updateTrack(this.timeline.selectedTrack.id, {
+                    randomizePitch: randomizePitch.checked
+                });
+            }
+        });
+
+        // Fade controls
+        fadeIn.addEventListener('input', () => {
+            const value = parseFloat(fadeIn.value);
+            fadeInValue.textContent = `${value.toFixed(1)}s`;
+            if (this.timeline.selectedTrack) {
+                this.timeline.updateTrack(this.timeline.selectedTrack.id, { fadeIn: value });
+            }
+        });
+
+        fadeOut.addEventListener('input', () => {
+            const value = parseFloat(fadeOut.value);
+            fadeOutValue.textContent = `${value.toFixed(1)}s`;
+            if (this.timeline.selectedTrack) {
+                this.timeline.updateTrack(this.timeline.selectedTrack.id, { fadeOut: value });
+            }
+        });
+
+        // Duplicate and delete
+        duplicateBtn.addEventListener('click', () => {
+            if (this.timeline.selectedTrack) {
+                this.timeline.duplicateTrack(this.timeline.selectedTrack.id);
+            }
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            if (this.timeline.selectedTrack) {
+                if (confirm('Are you sure you want to delete this track?')) {
+                    this.timeline.removeTrack(this.timeline.selectedTrack.id);
+                }
+            }
+        });
+    }
+
+    /**
+     * Handle track selection
+     */
+    onTrackSelected(track) {
+        const noSelection = document.getElementById('noTrackSelected');
+        const properties = document.getElementById('trackProperties');
+        const subliminalOptions = document.getElementById('subliminalOptions');
+
+        if (!track) {
+            noSelection.classList.remove('hidden');
+            properties.classList.add('hidden');
             return;
         }
 
-        // Show progress
-        document.getElementById('progress').classList.remove('hidden');
-        document.getElementById('result').classList.add('hidden');
-        this.updateProgress(0, 'Initializing audio context...');
+        noSelection.classList.add('hidden');
+        properties.classList.remove('hidden');
+
+        // Update property values
+        document.getElementById('trackName').value = track.name;
+        document.getElementById('trackVolume').value = track.volume;
+        document.getElementById('trackVolumeValue').textContent = `${Math.round(track.volume * 100)}%`;
+        document.getElementById('trackPan').value = track.pan;
+
+        const panValue = track.pan === 0 ? 'C' : (track.pan < 0 ? `L${Math.abs(Math.round(track.pan * 100))}` : `R${Math.round(track.pan * 100)}`);
+        document.getElementById('trackPanValue').textContent = panValue;
+
+        document.getElementById('repetitionsPerHour').value = track.repetitionsPerHour;
+        document.getElementById('randomizePosition').checked = track.randomizePosition;
+        document.getElementById('randomizeVolume').checked = track.randomizeVolume;
+        document.getElementById('randomizePitch').checked = track.randomizePitch;
+
+        document.getElementById('fadeIn').value = track.fadeIn;
+        document.getElementById('fadeInValue').textContent = `${track.fadeIn.toFixed(1)}s`;
+        document.getElementById('fadeOut').value = track.fadeOut;
+        document.getElementById('fadeOutValue').textContent = `${track.fadeOut.toFixed(1)}s`;
+
+        // Show/hide subliminal options
+        subliminalOptions.classList.toggle('hidden', track.type !== 'subliminal');
+    }
+
+    /**
+     * Handle tracks change
+     */
+    onTracksChanged(tracks) {
+        // Update export button state
+        const exportBtn = document.getElementById('exportBtn');
+        exportBtn.disabled = tracks.length === 0;
+    }
+
+    /**
+     * Initialize master bar
+     */
+    initMasterBar() {
+        const masterVolume = document.getElementById('masterVolume');
+        const masterVolumeValue = document.getElementById('masterVolumeValue');
+
+        masterVolume.addEventListener('input', () => {
+            const value = parseFloat(masterVolume.value);
+            masterVolumeValue.textContent = `${Math.round(value * 100)}%`;
+            audioEngine.setMasterVolume(value);
+        });
+    }
+
+    /**
+     * Initialize export modal
+     */
+    initExportModal() {
+        const exportBtn = document.getElementById('exportBtn');
+        const modal = document.getElementById('exportModal');
+        const closeBtn = document.getElementById('closeExportModal');
+        const downloadBtn = document.getElementById('downloadExportBtn');
+
+        exportBtn.addEventListener('click', () => this.showExportModal());
+        closeBtn.addEventListener('click', () => this.hideExportModal());
+        downloadBtn.addEventListener('click', () => this.downloadExport());
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.hideExportModal();
+            }
+        });
+    }
+
+    /**
+     * Show export modal and start export
+     */
+    async showExportModal() {
+        const modal = document.getElementById('exportModal');
+        const progress = document.getElementById('exportProgress');
+        const complete = document.getElementById('exportComplete');
+        const progressFill = document.getElementById('exportProgressFill');
+        const status = document.getElementById('exportStatus');
+
+        modal.classList.remove('hidden');
+        progress.classList.remove('hidden');
+        complete.classList.add('hidden');
+        progressFill.style.width = '0%';
+        status.textContent = 'Preparing export...';
+
+        const duration = parseInt(document.getElementById('outputDuration').value);
 
         try {
-            // Get settings
-            const duration = parseInt(document.getElementById('duration').value) * 60; // convert to seconds
-            const frequency = parseFloat(document.getElementById('frequency').value);
-            const subliminalVolume = parseFloat(document.getElementById('subliminalVolume').value);
-            const beatVolume = parseFloat(document.getElementById('beatVolume').value);
-            const repetitions = parseInt(document.getElementById('repetitions').value);
+            const buffer = await audioEngine.exportAudio(duration, (p) => {
+                const percent = Math.round(p * 100);
+                progressFill.style.width = `${percent}%`;
 
-            // Initialize audio context if needed
-            if (!this.audioContext) {
-                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
+                if (p < 0.1) status.textContent = 'Preparing tracks...';
+                else if (p < 0.9) status.textContent = 'Mixing audio...';
+                else status.textContent = 'Finalizing...';
+            });
 
-            const sampleRate = this.audioContext.sampleRate;
-            const totalSamples = sampleRate * duration;
+            this.exportBlob = audioEngine.bufferToWav(buffer);
 
-            this.updateProgress(10, 'Generating binaural beats...');
-
-            // Create the main output buffer (stereo)
-            const outputBuffer = this.audioContext.createBuffer(2, totalSamples, sampleRate);
-            const leftChannel = outputBuffer.getChannelData(0);
-            const rightChannel = outputBuffer.getChannelData(1);
-
-            // Generate binaural beats
-            const baseFreq = 200; // Base frequency in Hz
-            const leftFreq = baseFreq;
-            const rightFreq = baseFreq + frequency; // Creates the binaural beat
-
-            for (let i = 0; i < totalSamples; i++) {
-                leftChannel[i] = Math.sin(2 * Math.PI * leftFreq * i / sampleRate) * beatVolume;
-                rightChannel[i] = Math.sin(2 * Math.PI * rightFreq * i / sampleRate) * beatVolume;
-
-                if (i % (sampleRate * 10) === 0) {
-                    this.updateProgress(10 + (i / totalSamples) * 30, 'Generating binaural beats...');
-                }
-            }
-
-            this.updateProgress(40, 'Adding subliminal affirmations...');
-
-            // Calculate total repetitions based on duration
-            const totalReps = Math.floor((duration / 3600) * repetitions);
-            const inputDuration = this.inputAudioBuffer.duration;
-
-            // Add subliminals at random positions
-            for (let rep = 0; rep < totalReps; rep++) {
-                // Random position in the output
-                const maxStart = duration - inputDuration;
-                const startTime = Math.random() * maxStart;
-                const startSample = Math.floor(startTime * sampleRate);
-
-                // Random variations
-                const volumeVariation = subliminalVolume * (0.8 + Math.random() * 0.4); // ±20% variation
-                const pitchShift = 0.95 + Math.random() * 0.1; // Slight pitch variation
-                const pan = Math.random() * 2 - 1; // Random stereo panning
-
-                // Mix the input audio
-                const inputData = this.inputAudioBuffer.getChannelData(0);
-                const inputLength = Math.min(inputData.length, totalSamples - startSample);
-
-                for (let i = 0; i < inputLength; i++) {
-                    const sample = inputData[Math.floor(i * pitchShift)] || 0;
-                    const scaledSample = sample * volumeVariation;
-
-                    // Apply stereo panning
-                    const leftGain = pan < 0 ? 1 : 1 - pan;
-                    const rightGain = pan > 0 ? 1 : 1 + pan;
-
-                    leftChannel[startSample + i] += scaledSample * leftGain;
-                    rightChannel[startSample + i] += scaledSample * rightGain;
-                }
-
-                if (rep % 10 === 0) {
-                    this.updateProgress(40 + (rep / totalReps) * 40,
-                        `Adding subliminals... (${rep}/${totalReps})`);
-                }
-            }
-
-            this.updateProgress(80, 'Normalizing audio...');
-
-            // Normalize to prevent clipping
-            this.normalizeBuffer(leftChannel);
-            this.normalizeBuffer(rightChannel);
-
-            this.updateProgress(90, 'Preparing output...');
-
-            // Create audio source
-            const source = this.audioContext.createBufferSource();
-            source.buffer = outputBuffer;
-
-            // Store for download
-            this.outputBuffer = outputBuffer;
-
-            this.updateProgress(100, 'Complete!');
-
-            // Show result
-            setTimeout(() => {
-                document.getElementById('progress').classList.add('hidden');
-                document.getElementById('result').classList.remove('hidden');
-
-                // Create audio element for preview
-                this.createAudioPreview(outputBuffer);
-            }, 500);
-
+            progress.classList.add('hidden');
+            complete.classList.remove('hidden');
         } catch (error) {
-            console.error('Generation failed:', error);
-            alert('Failed to generate audio: ' + error.message);
-            document.getElementById('progress').classList.add('hidden');
+            console.error('Export failed:', error);
+            status.textContent = 'Export failed: ' + error.message;
         }
     }
 
-    normalizeBuffer(channelData) {
-        let max = 0;
-        for (let i = 0; i < channelData.length; i++) {
-            const abs = Math.abs(channelData[i]);
-            if (abs > max) max = abs;
-        }
-
-        if (max > 0.95) {
-            const scale = 0.95 / max;
-            for (let i = 0; i < channelData.length; i++) {
-                channelData[i] *= scale;
-            }
-        }
+    /**
+     * Hide export modal
+     */
+    hideExportModal() {
+        document.getElementById('exportModal').classList.add('hidden');
     }
 
-    createAudioPreview(buffer) {
-        // Create a preview (first 30 seconds only for performance)
-        const previewDuration = Math.min(30, buffer.duration);
-        const previewSamples = Math.floor(previewDuration * buffer.sampleRate);
+    /**
+     * Download exported audio
+     */
+    downloadExport() {
+        if (!this.exportBlob) return;
 
-        const previewBuffer = this.audioContext.createBuffer(
-            2,
-            previewSamples,
-            buffer.sampleRate
-        );
-
-        previewBuffer.copyToChannel(buffer.getChannelData(0).slice(0, previewSamples), 0);
-        previewBuffer.copyToChannel(buffer.getChannelData(1).slice(0, previewSamples), 1);
-
-        const blob = this.bufferToWave(previewBuffer);
-        const url = URL.createObjectURL(blob);
-
-        const audioElement = document.getElementById('outputAudio');
-        audioElement.src = url;
-    }
-
-    updateProgress(percent, message) {
-        document.getElementById('progressFill').style.width = percent + '%';
-        document.getElementById('progressText').textContent = message;
-    }
-
-    bufferToWave(buffer) {
-        const numberOfChannels = buffer.numberOfChannels;
-        const length = buffer.length * numberOfChannels * 2;
-        const arrayBuffer = new ArrayBuffer(44 + length);
-        const view = new DataView(arrayBuffer);
-        const channels = [];
-        let offset = 0;
-        let pos = 0;
-
-        // Write WAV header
-        const setUint16 = (data) => {
-            view.setUint16(pos, data, true);
-            pos += 2;
-        };
-        const setUint32 = (data) => {
-            view.setUint32(pos, data, true);
-            pos += 4;
-        };
-
-        // "RIFF" chunk descriptor
-        setUint32(0x46464952);
-        setUint32(36 + length);
-        setUint32(0x45564157);
-
-        // "fmt " sub-chunk
-        setUint32(0x20746d66);
-        setUint32(16);
-        setUint16(1);
-        setUint16(numberOfChannels);
-        setUint32(buffer.sampleRate);
-        setUint32(buffer.sampleRate * numberOfChannels * 2);
-        setUint16(numberOfChannels * 2);
-        setUint16(16);
-
-        // "data" sub-chunk
-        setUint32(0x61746164);
-        setUint32(length);
-
-        // Write audio data
-        for (let i = 0; i < buffer.numberOfChannels; i++) {
-            channels.push(buffer.getChannelData(i));
-        }
-
-        while (pos < arrayBuffer.byteLength) {
-            for (let i = 0; i < numberOfChannels; i++) {
-                let sample = channels[i][offset];
-                sample = Math.max(-1, Math.min(1, sample));
-                view.setInt16(pos, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-                pos += 2;
-            }
-            offset++;
-        }
-
-        return new Blob([arrayBuffer], { type: 'audio/wav' });
-    }
-
-    downloadAudio() {
-        if (!this.outputBuffer) {
-            alert('No audio to download.');
-            return;
-        }
-
-        const blob = this.bufferToWave(this.outputBuffer);
-        const url = URL.createObjectURL(blob);
-
+        const url = URL.createObjectURL(this.exportBlob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `subliminal-${this.selectedWave}-${Date.now()}.wav`;
+        a.download = `subliminal-audio-${Date.now()}.wav`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+
+        this.hideExportModal();
+    }
+
+    /**
+     * Initialize keyboard shortcuts
+     */
+    initKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Don't handle shortcuts if typing in an input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            switch (e.code) {
+                case 'Space':
+                    e.preventDefault();
+                    this.togglePlayback();
+                    break;
+                case 'Home':
+                    e.preventDefault();
+                    this.rewind();
+                    break;
+                case 'KeyL':
+                    e.preventDefault();
+                    this.toggleLoop();
+                    break;
+                case 'Equal':
+                case 'NumpadAdd':
+                    e.preventDefault();
+                    this.timeline.zoomIn();
+                    break;
+                case 'Minus':
+                case 'NumpadSubtract':
+                    e.preventDefault();
+                    this.timeline.zoomOut();
+                    break;
+                case 'KeyF':
+                    e.preventDefault();
+                    this.timeline.zoomFit();
+                    break;
+                case 'Delete':
+                case 'Backspace':
+                    if (this.timeline.selectedTrack) {
+                        e.preventDefault();
+                        this.timeline.removeTrack(this.timeline.selectedTrack.id);
+                    }
+                    break;
+            }
+        });
+    }
+
+    /**
+     * Toggle playback
+     */
+    togglePlayback() {
+        if (audioEngine.isPlaying) {
+            audioEngine.pause();
+        } else {
+            audioEngine.play();
+        }
+    }
+
+    /**
+     * Stop playback
+     */
+    stop() {
+        audioEngine.stop();
+    }
+
+    /**
+     * Rewind to beginning
+     */
+    rewind() {
+        audioEngine.seek(0);
+    }
+
+    /**
+     * Toggle loop
+     */
+    toggleLoop() {
+        const loopBtn = document.getElementById('loopBtn');
+        loopBtn.classList.toggle('active');
+        // Loop functionality would be implemented in the audio engine
+    }
+
+    /**
+     * Handle time update
+     */
+    onTimeUpdate(time) {
+        document.getElementById('currentTime').textContent = this.formatTime(time);
+        document.getElementById('totalTime').textContent = this.formatTime(this.timeline.duration);
+        this.timeline.updatePlayhead(time);
+    }
+
+    /**
+     * Handle play state change
+     */
+    onPlayStateChanged(playing) {
+        const playBtn = document.getElementById('playBtn');
+        playBtn.classList.toggle('playing', playing);
+    }
+
+    /**
+     * Handle meter update
+     */
+    onMeterUpdate(left, right) {
+        document.getElementById('meterLeft').style.width = `${left * 100}%`;
+        document.getElementById('meterRight').style.width = `${right * 100}%`;
+    }
+
+    /**
+     * Format time as MM:SS.mmm
+     */
+    formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        const ms = Math.floor((seconds % 1) * 1000);
+
+        return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
     }
 }
 
-// Initialize the application
+// Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    new SubliminalAudioMixer();
+    window.app = new SubliminalAudioEditor();
+    window.app.init();
 });
