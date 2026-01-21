@@ -1,0 +1,37 @@
+{
+  "name": "alpha-theta-subliminals",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A powerful web-based application for creating custom subliminal audio tracks with alpha and theta binaural beats.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "start": "node dist/server/entry.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/execute008/alpha-theta-subliminals.git"
+  },
+  "keywords": [
+    "subliminal",
+    "binaural",
+    "audio",
+    "theta",
+    "alpha"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/execute008/alpha-theta-subliminals/issues"
+  },
+  "homepage": "https://github.com/execute008/alpha-theta-subliminals#readme",
+  "dependencies": {
+    "astro": "^5.16.11",
+    "nanostores": "^1.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "typescript": "^5.9.3"
+  }
+}
